@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <vector>
 #include <immintrin.h>
+#include <math.h>
 
 // Uncomment for ISPC
 // #include "module_ispc.h"
@@ -30,13 +31,13 @@ inline void twoDimWrite(std::vector<float> &tensor, int &x, int &y, const int &s
 inline float fourDimRead(std::vector<float> &tensor, int &x, int &y, int &z, int &b,
                          const int &sizeX, const int &sizeY, const int &sizeZ)
 {
-    return 0.0;
+    return tensor[x * (sizeX * sizeY * sizeZ) + y * (sizeY * sizeZ) + z * (sizeZ) + b];
 }
 
 inline void fourDimWrite(std::vector<float> &tensor, int &x, int &y, int &z, int &b,
                          const int &sizeX, const int &sizeY, const int &sizeZ, float &val)
 {
-    return;
+    tensor[x * (sizeX * sizeY * sizeZ) + y * (sizeY * sizeZ) + z * (sizeZ) + b] = val;
 }
 
 // DO NOT EDIT THIS FUNCTION //
@@ -95,40 +96,55 @@ torch::Tensor myNaiveAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
     // Format QK_t Tensor into a 2D vector.
     std::vector<float> QK_t = formatTensor(QK_tTensor);
 
-    /* Here is an example of how to read/write 0's to  Q (B, H, N, d) using the 4D accessors
-
-        //loop over Batch Size
-         for (int b = 0; b < B; b++) {
-
-             //loop over Heads
-             for (int h = 0; h < H; h++) {
-
-                 //loop over Sequence Length
-                 for (int i = 0; i < N; i++) {
-
-                     //loop over Embedding Dimensionality
-                     for (int j = 0; j < d; j++) {
-                        float val = fourDimRead(Q, b, h, i, j, H, N, d);
-                        val = 0.0;
-                        fourDimWrite(Q, b, h, i, j, H, N, d, val);
-                     }
-                 }
-             }
-         }
-    */
-
-    /* Here is an example of how to read/write 0's to  QK_t (N, N) using the 2D accessors
-
-           for (int i = 0; i < N; i++) {
-           for (int j = 0; j < N; j++) {
-               float val = twoDimRead(QK_t, i, j, N);
-               val = 0.0;
-               twoDimWrite(QK_t, i, j, N, val);
-             }
-         }
-    */
-
-    // -------- YOUR CODE HERE  -------- //
+    // loop over Batch Size
+    for (int b = 0; b < B; b++)
+    {
+        // loop over Heads
+        for (int h = 0; h < H; h++)
+        {
+            // calculate softmax(QK_t)
+            for (int i = 0; i < N; i++)
+            {
+                float rowSum = 0.0;
+                // calculate exp(QK_t)
+                for (int j = 0; j < N; j++)
+                {
+                    float val = 0.0;
+                    // sum dot product QK
+                    for (int k = 0; k < d; k++)
+                    {
+                        float qVal = fourDimRead(Q, b, h, i, k, H, N, d);
+                        float kVal = fourDimRead(K, b, h, j, k, H, N, d);
+                        val += qVal * kVal;
+                    }
+                    val = exp(val);
+                    twoDimWrite(QK_t, i, j, N, val);
+                    rowSum += val;
+                }
+                // divide by rowSum
+                for (int j = 0; j < N; j++)
+                {
+                    float val = twoDimRead(QK_t, i, j, N);
+                    val /= rowSum;
+                    twoDimWrite(QK_t, i, j, N, val);
+                }
+            }
+            // QK_t @ V and store in O
+            for (int i = 0; i < N; i++)
+            {
+                for (int j = 0; j < d; j++)
+                {
+                    float vVal = fourDimRead(V, b, h, i, j, H, N, d);
+                    for (int k = 0; k < N; k++)
+                    {
+                        float val = fourDimRead(O, b, h, k, j, H, N, d);
+                        val += twoDimRead(QK_t, k, i, N) * vVal;
+                        fourDimWrite(O, b, h, k, j, H, N, d, val);
+                    }
+                }
+            }
+        }
+    }
 
     // DO NOT EDIT THIS RETURN STATEMENT //
     // It formats your C++ Vector O back into a Tensor of Shape (B, H, N, d) and returns it //

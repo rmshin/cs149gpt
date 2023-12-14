@@ -26,8 +26,14 @@ if not path.exists(ispc_path):
 ms = load(
     name="custom_module",
     sources=["module.cpp"],
-    extra_cflags=["-mavx", "-O3", "-fopenmp"],
-    extra_ldflags=[ispc_path],
+    extra_cflags=[
+        "-mavx",
+        "-O3",
+        "-Xpreprocessor",
+        "-fopenmp",
+        "-I/usr/local/opt/libomp/include",
+    ],
+    extra_ldflags=[ispc_path, "-L/usr/local/opt/libomp/lib"],
 )
 correctness_error_message = "\n-------------------------------------------\n YOUR ATTENTION PRODUCED INCORRECT RESULTS"
 
