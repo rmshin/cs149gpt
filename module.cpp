@@ -124,8 +124,7 @@ torch::Tensor myNaiveAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
                 // divide by rowSum
                 for (int j = 0; j < N; j++)
                 {
-                    float val = twoDimRead(QK_t, i, j, N);
-                    val /= rowSum;
+                    float val = twoDimRead(QK_t, i, j, N) / rowSum;
                     twoDimWrite(QK_t, i, j, N, val);
                 }
             }
@@ -134,13 +133,13 @@ torch::Tensor myNaiveAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
             {
                 for (int j = 0; j < d; j++)
                 {
-                    float vVal = fourDimRead(V, b, h, i, j, H, N, d);
+                    float val = 0.0;
                     for (int k = 0; k < N; k++)
                     {
-                        float val = fourDimRead(O, b, h, k, j, H, N, d);
-                        val += twoDimRead(QK_t, k, i, N) * vVal;
-                        fourDimWrite(O, b, h, k, j, H, N, d, val);
+                        float vVal = fourDimRead(V, b, h, k, j, H, N, d);
+                        val += twoDimRead(QK_t, i, k, N) * vVal;
                     }
+                    fourDimWrite(O, b, h, i, j, H, N, d, val);
                 }
             }
         }
