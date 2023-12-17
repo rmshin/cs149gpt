@@ -173,8 +173,9 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
     // Format QK_t Tensor into a 2D vector.
     std::vector<float> QK_t = formatTensor(QK_tTensor);
 
-    // -------- YOUR CODE HERE  -------- //
-    int TILE_SIZE = 16;
+    int TILE_SIZE = 64;
+    int N_TILE_SIZE = ceil((float)N / (float)TILE_SIZE);
+    int d_TILE_SIZE = ceil((float)d / (float)TILE_SIZE);
 
     // loop over Batch Size
     for (int b = 0; b < B; b++)
@@ -182,9 +183,9 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
         // loop over Heads
         for (int h = 0; h < H; h++)
         {
-            for (int ti = 0; ti < (int)ceil(N / TILE_SIZE); ti++)
+            for (int ti = 0; ti < N_TILE_SIZE; ti++)
             {
-                for (int tj = 0; tj < (int)ceil(N / TILE_SIZE); tj++)
+                for (int tj = 0; tj < N_TILE_SIZE; tj++)
                 {
                     for (int i = 0; i < std::min(TILE_SIZE, N - ti * TILE_SIZE); i++)
                     {
@@ -205,7 +206,7 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
                     }
                 }
             }
-            // divide by rowSum (softmax(QK_t))
+            // divide by rowSum(softmax(QK_t))
             for (int i = 0; i < N; i++)
             {
                 float rowSum = 0.0;
@@ -220,9 +221,9 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
                 }
             }
 
-            for (int ti = 0; ti < (int)ceil(N / TILE_SIZE); ti++)
+            for (int ti = 0; ti < N_TILE_SIZE; ti++)
             {
-                for (int tj = 0; tj < (int)ceil(d / TILE_SIZE); tj++)
+                for (int tj = 0; tj < d_TILE_SIZE; tj++)
                 {
                     for (int i = 0; i < std::min(TILE_SIZE, N - ti * TILE_SIZE); i++)
                     {
@@ -246,8 +247,7 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
 
     // DO NOT EDIT THIS RETURN STATEMENT //
     // It formats your C++ Vector O back into a Tensor of Shape (B, H, N, d) and returns it //
-    return torch::from_blob(O.data(), {B, H, N, d}, torch::TensorOptions().dtype(torch::kFloat32))
-        .clone();
+    return torch::from_blob(O.data(), {B, H, N, d}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
 }
 
 // ---------------------------------------------------------- //
