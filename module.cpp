@@ -174,7 +174,7 @@ torch::Tensor myUnfusedAttentionBlocked(torch::Tensor QTensor, torch::Tensor KTe
     // Format QK_t Tensor into a 2D vector.
     std::vector<float> QK_t = formatTensor(QK_tTensor);
 
-    int TILE_SIZE = 128;
+    int TILE_SIZE = 64;
 
     // loop over Batch Size
     for (int b = 0; b < B; b++)

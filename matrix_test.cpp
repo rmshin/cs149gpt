@@ -5,7 +5,7 @@
 
 #define N 4096
 #define d 4096
-#define T 512
+#define T 64
 
 void matMulNaiveTranspose(std::vector<float> const &Q, std::vector<float> const &K,
                           std::vector<float> &QK_t)
@@ -14,9 +14,10 @@ void matMulNaiveTranspose(std::vector<float> const &Q, std::vector<float> const 
     {
         for (int inner = 0; inner < d; inner++)
         {
+            float qVal = Q[row * d + inner];
             for (int col = 0; col < N; col++)
             {
-                QK_t[row * N + col] += Q[row * d + inner] * K[inner * N + col];
+                QK_t[row * N + col] += qVal * K[inner * N + col];
             }
         }
     }
