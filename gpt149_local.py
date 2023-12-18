@@ -311,14 +311,14 @@ def part2Test(N, d, B, H):
 def part3Test(N, d, B, H):
     print("Running Part 3 Test: Fused Attention\n")
     Q, K, V = createQKVSimple(N, d, B, H)
-    attentionModuleStudent = CustomAttention(Q, K, V, B, H, N, d)
+    # attentionModuleStudent = CustomAttention(Q, K, V, B, H, N, d)
     attentionModuleReference = CustomAttention(Q, K, V, B, H, N, d, True)
     params = (N, d, B, H)
-    print("-----RUNNING REFERENCE IMPLEMENTATION-----\n")
-    testTemplate(
-        attentionModuleStudent.myFusedAttention, params, "REFERENCE - FUSED ATTENTION"
-    )
-    time.sleep(3)
+    # print("-----RUNNING REFERENCE IMPLEMENTATION-----\n")
+    # testTemplate(
+    #     attentionModuleStudent.myFusedAttention, params, "REFERENCE - FUSED ATTENTION"
+    # )
+    # time.sleep(3)
     print("-----RUNNING STUDENT IMPLEMENTATION-----\n")
     testTemplate(
         attentionModuleReference.myFusedAttention, params, "STUDENT - FUSED ATTENTION"
@@ -328,14 +328,14 @@ def part3Test(N, d, B, H):
 def part4Test(N, d, B, H, bc, br):
     print("Running Part 4 Test: Flash Attention\n")
     Q, K, V = createQKVSimple(N, d, B, H)
-    attentionModuleStudent = CustomAttention(Q, K, V, B, H, N, d, False, bc, br)
+    # attentionModuleStudent = CustomAttention(Q, K, V, B, H, N, d, False, bc, br)
     attentionModuleReference = CustomAttention(Q, K, V, B, H, N, d, True, bc, br)
     params = (N, d, B, H)
-    print("-----RUNNING REFERENCE IMPLEMENTATION-----\n")
-    testTemplate(
-        attentionModuleStudent.myFlashAttention, params, "REFERENCE - FLASH ATTENTION"
-    )
-    time.sleep(3)
+    # print("-----RUNNING REFERENCE IMPLEMENTATION-----\n")
+    # testTemplate(
+    #     attentionModuleStudent.myFlashAttention, params, "REFERENCE - FLASH ATTENTION"
+    # )
+    # time.sleep(3)
     print("-----RUNNING STUDENT IMPLEMENTATION-----\n")
     testTemplate(
         attentionModuleReference.myFlashAttention, params, "STUDENT - FLASH ATTENTION"

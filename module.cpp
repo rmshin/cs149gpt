@@ -266,7 +266,6 @@ torch::Tensor myFusedAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
     // Make O Tensor with Shape (B, H, N, d)
     // and O Row Tensor with Shape (N)
     at::Tensor OTensor = at::zeros({B, H, N, d}, at::kFloat);
-    at::Tensor ORowTensor = at::zeros({N}, at::kFloat);
 
     // Format Y, Q, K, and V tensors into 4D vectors
     std::vector<float> O = formatTensor(OTensor);
@@ -274,26 +273,52 @@ torch::Tensor myFusedAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
     std::vector<float> K = formatTensor(KTensor);
     std::vector<float> V = formatTensor(VTensor);
 
-    // Format ORow Tensor into a 1D vector
-    //  You can simply access this as ORow[i]
-    std::vector<float> ORow = formatTensor(ORowTensor);
-
-    // -------- YOUR CODE HERE  -------- //
+#pragma omp parallel for collapse(3)
     // We give you a template of the first three loops for your convenience
     // loop over batch
     for (int b = 0; b < B; b++)
     {
-
         // loop over heads
         for (int h = 0; h < H; h++)
         {
             for (int i = 0; i < N; i++)
             {
-
-                // YRow is moved inside so each OpenMP thread gets a local copy.
+                // ORow is moved inside so each OpenMP thread gets a local copy.
                 at::Tensor ORowTensor = temp.index({torch::indexing::Slice(omp_get_thread_num(), torch::indexing::None)});
                 std::vector<float> ORow = formatTensor(ORowTensor);
-                // YOUR CODE HERE
+
+                float rowSum = 0.0;
+                // calculate exp(ORow)
+                for (int j = 0; j < N; j++)
+                {
+                    float val = 0.0;
+                    // dot product QK
+                    for (int k = 0; k < d; k++)
+                    {
+                        float qVal = fourDimRead(Q, b, h, i, k, H, N, d);
+                        float kVal = fourDimRead(K, b, h, j, k, H, N, d);
+                        val += qVal * kVal;
+                    }
+                    val = exp(val);
+                    ORow[j] = val;
+                    rowSum += val;
+                }
+                // divide by rowSum for softmax(ORow)
+                for (int j = 0; j < N; j++)
+                {
+                    ORow[j] /= rowSum;
+                }
+
+                for (int k = 0; k < N; k++)
+                {
+                    for (int j = 0; j < d; j++)
+                    {
+                        float oVal = fourDimRead(O, b, h, i, j, H, N, d);
+                        float vVal = fourDimRead(V, b, h, k, j, H, N, d);
+                        oVal += ORow[k] * vVal;
+                        fourDimWrite(O, b, h, i, j, H, N, d, oVal);
+                    }
+                }
             }
         }
     }

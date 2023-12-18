@@ -29,6 +29,7 @@ ms = load(
     extra_cflags=[
         "-mavx",
         "-O3",
+        "-ffast-math",
         "-Xpreprocessor",
         "-fopenmp",
         "-I/usr/local/opt/libomp/include",
