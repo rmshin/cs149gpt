@@ -355,19 +355,71 @@ torch::Tensor myFlashAttention(torch::Tensor QTensor, torch::Tensor KTensor, tor
     std::vector<float> Q = formatTensor(QTensor);
     std::vector<float> K = formatTensor(KTensor);
     std::vector<float> V = formatTensor(VTensor);
-    std::vector<float> Sij = formatTensor(SijTensor);
     std::vector<float> Pij = formatTensor(PijTensor);
-    std::vector<float> Kj = formatTensor(KjTensor);
-    std::vector<float> Vj = formatTensor(VjTensor);
-    std::vector<float> Qi = formatTensor(QiTensor);
-    std::vector<float> Oi = formatTensor(OiTensor);
     std::vector<float> l = formatTensor(LTensor);
-    std::vector<float> PV = formatTensor(PVTensor);
-    std::vector<float> li = formatTensor(LiTensor);
-    std::vector<float> lij = formatTensor(LijTensor);
-    std::vector<float> lnew = formatTensor(LnewTensor);
 
-    // -------- YOUR CODE HERE  -------- //
+    // loop over batch
+    for (int b = 0; b < B; b++)
+    {
+        // loop over heads
+        for (int h = 0; h < H; h++)
+        {
+            for (int tj = 0; tj < N; tj += Bc)
+            {
+                for (int ti = 0; ti < N; ti += Br)
+                {
+                    // calculate exp(QK) for block (Br, Bc)
+                    for (int j = tj; j < std::min(tj + Bc, N); j++)
+                    {
+                        int jj = j - tj;
+                        for (int i = ti; i < std::min(ti + Br, N); i++)
+                        {
+                            int ii = i - ti;
+                            float val = 0.0;
+                            for (int k = 0; k < d; k++)
+                            {
+                                float qVal = fourDimRead(Q, b, h, i, k, H, N, d);
+                                float kVal = fourDimRead(K, b, h, j, k, H, N, d);
+                                val += qVal * kVal;
+                            }
+                            val = exp(val);
+                            twoDimWrite(Pij, ii, jj, Bc, val);
+                        }
+                    }
+
+                    // apply blocked softmax
+                    for (int i = ti; i < std::min(ti + Br, N); i++)
+                    {
+                        int ii = i - ti;
+                        float rowSum = 0.0;
+                        for (int j = tj; j < std::min(tj + Bc, N); j++)
+                        {
+                            int jj = j - tj;
+                            rowSum += twoDimRead(Pij, ii, jj, Bc);
+                        }
+                        float prevSum = l[i];
+                        float newSum = prevSum + rowSum;
+                        l[i] = newSum;
+                        for (int k = 0; k < d; k++)
+                        {
+                            float pv = 0.0;
+                            float oVal = fourDimRead(O, b, h, i, k, H, N, d);
+                            for (int j = tj; j < std::min(tj + Bc, N); j++)
+                            {
+                                int jj = j - tj;
+                                float pVal = twoDimRead(Pij, ii, jj, Bc);
+                                float vVal = fourDimRead(V, b, h, j, k, H, N, d);
+                                pv += pVal * vVal;
+                            }
+                            oVal = (prevSum * oVal + pv) / newSum;
+                            fourDimWrite(O, b, h, i, k, H, N, d, oVal);
+                        }
+                    }
+                }
+            }
+            std::fill(l.begin(), l.end(), 0);
+        }
+    }
 
     // DO NOT EDIT THIS RETURN STATEMENT //
     // It formats your C++ Vector O back into a Tensor of Shape (B, H, N, d) and returns it //
